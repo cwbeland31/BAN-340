@@ -1,3 +1,6 @@
+#------------------------------------------------------------------------------------#
+#---------------------BAN-340---Final---Project--------------------------------------#
+#------------------------------------------------------------------------------------#
 #library
 library('tidyverse')
 library("rpart")
@@ -30,11 +33,13 @@ str(census.copy.na)
 census.copy.na$native.country
 md.pattern(census.copy.na[,c(2,7,14)])
 census.copy.na[which(is.na(census.copy.na$workclass)),]
-table(missing.values.complete$workclass)
+table(missing.values.complete$education)
 table(missing.values.complete$sex)
 table(missing.values.complete$relationship)
-table(missing.values.complete$native.country)
-rm(census.copy,census.copy.na,dup,missing.values.native,missing.values.occupation, missing.values.workclass)
+table(missing.values.complete$income.class)
+(333/2065) #16% of the missing values make over 50k, compared to the 25% overal in the dataset. This could be due to the lower class
+#earners being less willing to share their occupation and workclass.
+rm(missing.values.native,missing.values.occupation, missing.values.workclass)
 #nothing seems to be out of the ordinary
 #removing missing values and adding 'missing'
 levels(census$workclass)[1]= "?"
@@ -142,23 +147,30 @@ ggplot(census, aes(y=age))+
 
 boxplot.stats(census$age)
 
-ggplot(census,aes(x=age,fill=income.class))+
+age.den<-ggplot(census,aes(x=age,fill=income.class))+
   geom_density(stat = "count", colour='black')+
   theme_minimal()+
   ggtitle( 'Age frequency compared to income'
   )
-  
+age.den  
 
-ggplot(census,aes(x=age, fill=income.class))+
-  geom_histogram(position= "fill", bins = 60)+
+age.norm<-ggplot(census,aes(x=age, fill=income.class))+
+  geom_histogram(position= "fill", bins =36 , show.legend = FALSE)+
   theme_minimal()+
-ggtitle('Normalized comparison of age with respect to income')
+  scale_x_continuous(breaks=c(20,25,30,35,40,45,50,55,60,65,70,75,80,85,90))+
+labs(title='Ratio of Age to Income Class',
+     y= 'Ratio')
+
+grid.arrange(age.den,age.norm,nrow= 2)
+
 age.na<-is.na(census$age)
 which(age.na=="TRUE") #No missing data
+
 
 age.out<-census[which(census$age>78),]
 age.out #Nothing looks out of the ordinary, #highest age is 90. Did the cenesus stop at 90?, a decent amount of outliers. THey are logicals tho.
 census%>%filter(age==90)
+
 #age is right scewed, look to unscew
 #This shows us that the majority of people that make over 50k are in their peak work years. 
 #Intuitevly, this makes sense because older people have more experience thus better job prospects
@@ -173,40 +185,77 @@ census$age.e.bin <- cut(census$age, breaks = c(seq(0, 100, by = 20), Inf), label
 #Work class
 ggplot(census, aes(x= workclass, fill= income.class))+
   geom_bar(position= "stack", colour= 'black')+
+  scale_y_continuous(breaks = c(5000,22000))+
   theme_minimal()+
   ggtitle('Frequencies of Workclass')#alternate stack and fill to look at count and normalized graphs
 ggplot(census, aes(x= workclass, fill= income.class))+
   geom_bar(position= "fill",colour= 'black')+
   theme_minimal()+
-  scale_y_continuous(breaks = c(.1,.2,.3,.4,.5,.6,.7,.8,.9,1))
-  labs( y= 'ratio'
+  scale_y_continuous(breaks = c(.1,.2,.3,.4,.5,.6,.7,.8,.9,1))+
+  labs( y= 'ratio',
+        title= 'Normalized workclass'
   )
 
 #These two graphs give us an idea of how the workclass of a person might effect his/hers earning prospects
 #It seems that the majority of the data fall in the Private sector but those who work in government and self have better 
 #have a better percentage of earning over 50k. However, I doubt this has predictive capabilities as the private class
-#is so large that it probably includes many lowerpaying jobs as well as more higher paying jobs.
+#is so large that it probably includes many lowerpaying jobs as well as more higher paying jobs. I do 
 workclass.table<- table(census$workclass,census$income.class)
 work.inc.margin<- round(prop.table(workclass.table, margin = 1),2)*100
 workclass.table
 work.inc.margin
 #This table shows the actual percentages of each specific workclass's  
 ggplot(census, aes(x=age.e.bin, fill=workclass))+
-  geom_bar(position = 'fill')
-ggplot(census, aes(x=workclass, fill=sex))+
-  geom_bar(position = 'fill')
-#here we can see the ratio of males and females in each respective work class. Nothing seems out of the ordinary
-#and looks like the ratios are about what you would expect for each workclass based on the normal females
+  geom_bar(position = 'dodge', colour='black')+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(0,250,1000,2000,3000,7000,12500))+
+  labs(y= 'ratio',
+       x= 'age bin',
+       title= 'workclass by age')
+ggplot(census, aes(x=age.e.bin, fill=workclass))+
+  geom_bar(position = 'fill', colour='black')+
+  scale_y_continuous(breaks = c(.1,.2,.3,.4,.5,.6,.7,.8,.9,1))+
+  theme_minimal()+
+  labs(y= 'ratio',
+       x= 'age bin',
+       title= 'workclass by age')
+#This graph does not show us anything to do with income class but it is interesting to the increase of percentage of self employed people.
 
-#fnlwgt means the # of people this observation represents. Probably not relevent for analysis
+ggplot(census, aes(x=workclass, fill=sex))+
+  geom_bar(position = 'fill', colour= 'black')+
+scale_y_continuous(breaks = c(.1,.2,.3,.4,.5,.6,.7,.8,.9,1))+
+  theme_minimal()+
+  labs( y= 'ratio',
+        title= 'ratio of gender in workclass')
+#here we can see the ratio of males and females in each respective work class. Nothing seems out of the ordinary
+#and looks like the ratios are about what you would expect for each workclass based on the proportion of females in
+#the entire dataset. 
+
+#fnlwgt means the # of people this observation represents.
 ggplot(census, aes(x= fnlwgt, fill= income.class))+
-  geom_histogram(position = "fill")
+  geom_histogram(position = "stack", colour= 'black')
+#The business objective stated at the start of this model is to predict wether a person makes over/under 50K. Thought this variable
+# might have some predictive power it is unlikly that new data would come with this number thus reducing its use. For this reason 
+# it will be left out of the modeling section. 
 
 #Education
-ggplot(census, aes(x= education))+
-  geom_bar(fill="lightblue")
-ggplot(census, aes(x= education, fill=income.class))+
-  geom_bar(position="stack")
+table(census$education)
+edu.freq<-ggplot(census, aes(x= education, fill= income.class))+
+  geom_bar(position = 'stack', colour= 'black')+
+  theme_minimal()+
+  labs(title= 'Education Frequency')+
+  scale_y_continuous(breaks = c(0,500,1618,3731,1618,5019,18762))
+  
+edu.norm<-ggplot(census, aes(x= education, fill=income.class))+
+  geom_bar(position="fill", colour= 'black', show.legend = FALSE)+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(.068,.19,.422,.566,.75))+
+  labs(title= 'Ratio of Education to Income Class',
+       y= 'ratio')
+
+grid.arrange(edu.freq,edu.norm, nrow= 1)
+#about what you would expect. Those with higher education levels tend to make over 50k more often.
+
 ggplot(census, aes(x= education, fill= sex))+
   geom_bar(position= "stack")
 ggplot(census, aes(x=education, fill= workclass))+
@@ -214,34 +263,61 @@ ggplot(census, aes(x=education, fill= workclass))+
                       #note: due to the re-leveling edu.num is none-representative of level.
                             #furthermore it is best to level indicators at 0-1 as the difference of a No-Hs and HS and undergrad-grad is subjective
 #Marital.status
+table(census$marital.status)
+
 ggplot(census, aes(x= marital.status,fill= income.class))+
-  geom_bar(position = "fill")
+  geom_bar(position = "stack", colour= 'black')+
+  theme_minimal()+
+  scale_y_continuous(breaks= c(822,4206,10617,14400))+
+  labs(x= 'marital status',
+       title= 'marital status frequency')
+
 ggplot(census, aes(x= marital.status,fill= income.class))+
-  geom_bar(position = "stack")
-census%>% filter(age<20)%>%filter(marital.status== "Married")
+  geom_bar(position = "fill", colour= 'black')+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(.1,.2,.3,.4,.5,.6,.7,.8,.9,1))+
+  labs(title= 'ratio of marital status to income')
 
 #Relationship status
-ggplot(census, aes(x= relationship, fill= income.class))+   
-  geom_bar(position = "stack")
-ggplot(census, aes(x= relationship, fill= income.class))+   
-  geom_bar(position = "fill")
+rela.feq<-ggplot(census, aes(x= relationship, fill= income.class))+   
+  geom_bar(position = "stack", colour= 'black')+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(0,880,3198,4446,7703,13818))+
+  labs(title= 'Relationship Frequency')
+
+rela.norm<-ggplot(census, aes(x= relationship, fill= income.class))+   
+  geom_bar(position = "fill", colour= 'black',show.legend = FALSE)+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(0,1,.45,.11,.05))+
+  labs(title= 'Ratio of Relationship to Income Class')
+grid.arrange(rela.feq,rela.norm, nrow=2)
 
 ggplot(census, aes(x=relationship, fill= marital.status))+
   geom_bar(position= "fill")
-
 ggplot(census, aes(x=relationship, fill= sex))+
   geom_bar(position= "stack")
-#trying to combine information in marital.status and relationship
-#It will probably best to leave out one of relationship or marital status. We will keep relationship
-#because decision trees found it to have more predictive power. 
+#It will probably best to leave out one of relationship or marital status due to the similarities. Also note
+#how the married amount between relationship and marital status is differnt 14400 in marital vs 17016
+#I do not really see why this is though it probably should be investigated further. ALso this both of these variables will
+#most likly have strong predictive power.
 
-#capital income
+#--------capital income-----------------#
 ggplot(census, aes(capital.gain, fill= income.class))+
-  geom_histogram(position= 'stack')
+  geom_histogram(position= 'stack', colour= 'black')+
+  scale_y_continuous(breaks = c(0,27513,500,1000,5750))+
+  theme_minimal()+
+  labs(title= 'Capital Gains Frequency',
+       x= 'Capital Gains')
+
 ggplot(census, aes(capital.loss, fill= income.class))+
-  geom_histogram(position= 'stack')
-boxplot(census$capital.gain)
-boxplot(census$capital.loss)
+  geom_histogram(position= 'stack', colour= 'black')+
+  scale_y_continuous(breaks = c(28624,1000,500,0,6750))+
+  theme_minimal()+
+  labs(
+    x= "Captial Loss",
+    title='Capital Loss Frequency'
+  )
+
 #looking at numerics/ generalize
 census$capital.gain.yes<- census$capital.gain>0
 census$capital.loss.yes<- census$capital.loss>0
@@ -256,12 +332,15 @@ census$capital.loss.yes<-cap.loss
 table(census$capital.gain.yes) #only 2538 people had capital gains
 table(census$capital.loss.yes) #only 1427 people posted capital losses. 
 #both these data sets are right skewed, probably not suited for regression.
+boxplot(census$capital.gain)
+boxplot(census$capital.loss)
 qqnorm(census$capital.gain, col= "blue") 
 qqline(census$capital.gain, col="red")
 qqnorm(census$capital.loss, col= "blue") 
 qqline(census$capital.loss, col="red") 
-#lots of 99999 capital gains. Are they a data miss entry? all have above 50k. Does the system max out at 99999 capital gains
+#lots of 99999 capital gains. Are they a data miss entry? all have above 50k. Does the system max out at 99999 capital gains?
 summary(census$capital.loss)
+summary(census$capital.gain)
 #max loss was 3770.0 seems okay. No red flags.
 prop.table(table(census$income.class,census$capital.gain.yes),2) #62% of those with>50k  have capital gain
 summary(census$income.class)
@@ -271,11 +350,32 @@ capital.gain.or.loss <- (census$capital.gain>0|census$capital.loss>0) #seem more
 prop.table(table(census$income.class, capital.gain.or.loss),2)
 
 ggplot(census, aes(x= capital.gain.or.loss, fill= income.class))+
-  geom_bar(position= "fill")+
-theme_minimal()
+  geom_bar(position= "fill", colour= 'black')+
+  scale_y_continuous(breaks = c(0,.196,.586,1))+
+  theme_minimal()+
+  labs(x= 'Capital Gain or Loss',
+       y= 'Ratio',
+       title= 'Ratio of Captial Gain/loss to income')
+
+table(capital.gain.or.loss)
+#This looks to have some prediction power but this only applies for around 4000 people out of 26092
 #occupation
-ggplot(census, aes( x=occupation, fill= income.class))+ 
-  geom_bar(position = "fill")
+occ.norm<-ggplot(census, aes( x=occupation, fill= income.class))+ 
+  geom_bar(position = "fill", colour= 'black')+
+  scale_y_continuous(breaks = c(.13,.22,.47), sec.axis = sec_axis(~.,breaks = c(.06,.17,.27,.3)))+
+  theme_minimal()+
+  labs(y= 'ratio',
+       title= 'Ratio of occupation to income class')
+
+occ.freq<-ggplot(census, aes( x=occupation, fill= income.class))+ 
+  geom_bar(position = "stack", colour= 'black', show.legend = FALSE)+
+  scale_y_continuous(breaks = c(0,3712,5586,8001), sec.axis = sec_axis(~.,breaks = c(5665,2605,3565,911)))+
+  theme_minimal()+
+  labs(y= 'Count',
+       title= 'Frequency of Occupation')
+
+grid.arrange(occ.freq, occ.norm, nrow= 2)
+
 table(census$income.class, census$occupation)
 table(census$occupation)
 ggplot(census, aes( x=occupation, fill= income.class))+
@@ -290,20 +390,36 @@ gt1<- table(census$income.class,census$sex)
 gt2<- gt1
 gt2[1,] <- (gt2[1,]/margin.table(gt1,2))*100
 gt2[2,]<- (gt2[2,]/margin.table(gt1,2))*100
-gt2
+gt2 #percentages
 
 ggplot(census, aes(sex, fill= income.class))+
-  geom_bar(position="fill")
+  geom_bar(position="fill", colour= 'black')+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(.1138,0,1), sec.axis = sec_axis(~.,breaks = c(.3144,0,1)))+
+  labs(y= 'ratio',
+       x= 'Gender',
+       title= 'Ratio of Gender to Income class')
 
+ggplot(census, aes(sex, fill= income.class))+
+  geom_bar(position="stack", colour= 'black')+
+  scale_y_continuous(breaks = c(1109,9743), sec.axis = sec_axis(~.,breaks = c(6382,20302)))+
+  theme_minimal()+
+  labs(
+    x= 'Gender',
+    y= 'Count',
+    title= 'Frequency of Gender'
+  )
+
+
+#much fewer females than males. Could also be due to more females falling into the sames groups. Using the fnlwgt and comparing those numbers to males might be more equal
+ f<-census%>%filter(sex== 'Female')
+ m<- census%>% filter(sex== 'Male')
+sum(f$fnlwgt)
+sum(m$fnlwgt)
+sum(f$fnlwgt)/(sum(f$fnlwgt,m$fnlwgt)) #almost the exact percentage of 31% female and 69% males so this is not the case.
+ 
 ggplot(census, aes(race, fill= sex))+
   geom_bar(position="fill")
-
-ggplot(census, aes(sex, fill= income.class))+
-  geom_bar(position="stack") #much fewer females than males. Possible bias: calculated differently from the standard pouplation 
-levels(census$income.class)
-census%>% filter(race== "White")%>% filter(sex=="Male")%>% count()
-census%>% filter(race== "White")%>% filter(sex=="Male")%>% filter(income.class== ">50K")%>%count()
-5865/18011
 
 #Race
 race.table<-table(census$income.class, census$race)
@@ -314,29 +430,66 @@ rt2<- rt1
 rt2[1,] <- (rt2[1,]/margin.table(rt1,2))*100
 rt2[2,]<- (rt2[2,]/margin.table(rt1,2))*100
 rt2 #race percentages, asians and whites are more likly to make over 50k
-ggplot(census, aes(race, fill= workclass))+
-  geom_bar(position = 'fill')
 ggplot(census, aes(race, fill= income.class))+
-  geom_bar(position = "fill")
-ggplot(census, aes(education, fill= race))+
-  geom_bar(position = 'fill')
+  geom_bar(position = "stack", colour= 'black')+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(1000,3000), sec.axis = sec_axis(~.,breaks = c(6836,25892)))+
+  labs(title= 'Frequency of Race')
+  
+
+ggplot(census, aes(race, fill= income.class))+
+  geom_bar(position = "fill", colour= 'black')+
+  scale_y_continuous(breaks = c(0,.117,.285,1), sec.axis = sec_axis(~.,breaks = c(.091,.264,.13,1)))+
+  theme_minimal()+
+  labs(
+    y= 'ratio',
+    title= 'Race to income class ratio'
+  )
+
 levels(census$race)
-#heavily scewed toward white which is expected, also white is pretty high
+census%>% filter(race== "White")%>% filter(sex=="Male")%>% count()
+census%>% filter(race== "White")%>% filter(sex=="Male")%>% filter(income.class== ">50K")%>%count()
+5865/18011 #Does not seem that race will be a huge predictor of income
+
+# Also heavily scewed toward white which is expected, also white is pretty high
 
 #hours per week 
-boxplot(census$hours.per.week)
+ggplot(data= census, aes(y= hours.per.week))+
+  geom_boxplot()+
+  theme_minimal()+
+theme(axis.title.x=element_blank(),
+                axis.text.x=element_blank(),
+                axis.ticks.x=element_blank(),
+      plot.title = element_text(hjust = 0.5))+
+  labs(y='',
+       title= 'Hours per Week')
+
 boxplot.stats(census$hours.per.week)
 max(census$hours.per.week)
 hrsperweek.out<-census[which(census$hours.per.week>52|census$hours.per.week<33),]
 summary(hrsperweek.out)
 census[which(census$hours.per.week== 99),]
-census%>%filter(income.class==" >50K.")%>%filter(hours.per.week== 99)
+census%>%filter(income.class==">50K")%>%filter(hours.per.week== 99)
+census%>%filter(hours.per.week== 99)%>%count()
+census%>%filter(income.class==">50K")%>%filter(hours.per.week== 99)%>%count()
+(25/77) #percentage similar to the regular population......
+#These values seem interesting with a mix of above and below incomeclass. I wounder if these
+#results should be included or removed in the model. I know its possible and people work these hours but
+#are these results actually indicutive or was the 99hrs an error in data entry?
 
 qqnorm(census$hours.per.week, col= "blue") 
 qqline(census$hours.per.week, col="red") #closser to normality than capital.gains/loss
 
 ggplot(census, aes(x= hours.per.week, fill= income.class))+
-  geom_histogram(position = "stack") #almost half work 40hrs a week
+  geom_histogram(position = "stack", colour= 'black', bins = 10, binwidth = 10)+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(14201,0,500,1000,1500,2000))+
+  scale_x_continuous(breaks = c(0,10,20,30,40,50,60,70,80,90,99))+
+  labs(y= 'Hours per Week',
+       title= 'Hours per Week Frequency')
+  
+
+#almost half work 40hrs a week
 census$hours.per.week<- as.numeric(census$hours.per.week)
 hours.per.week.bin<- cut(census$hours.per.week, breaks = c(0,39, Inf), labels = c("<40hrs", ">=40hrs"))
 over.40hrs<- c(rep(0,length(census$age)))
@@ -344,9 +497,26 @@ for(i in 1:length(1:length(census$age))){
   if(hours.per.week.bin[i]== ">=40hrs")over.40hrs[i]<-1
 }
 census$hours.per.week.over40<-over.40hrs
-ggplot(census, aes(x= hours.per.week.bin, fill= income.class))+
-  geom_bar(position = "stack") #This predictor could help as those who work less than 40hrs do not make over 50k often
 
+ggplot(census, aes(x= hours.per.week.bin, fill= income.class))+
+  geom_bar(position = "stack", colour= 'black')+
+  scale_y_continuous(breaks = c(6687, 656), sec.axis = sec_axis(~.,breaks = c(23358,6835)))+
+  theme_minimal()+
+  labs(
+    x= 'Hours Per Week',
+    title= 'Frequency of over/under hours worked'
+  )
+
+ggplot(census, aes(x= hours.per.week.bin, fill= income.class))+
+  geom_bar(position = "fill", colour= 'black')+
+  scale_y_continuous(breaks = c(.0981,0,1), sec.axis = sec_axis(~.,breaks = c(.2926,0,1)))+
+  theme_minimal()+
+  labs(
+    x= 'Hours Per Week',
+    y= 'Ratio',
+    title= 'Ratio of over income.class and over/under 40hrs work weeks ')
+
+#This predictor could help as those who work less than 40hrs do not make over 50k often
 
 census%>% filter(hours.per.week.bin== "<40hrs")%>% filter(sex== "Male")%>% count()
 census%>% filter(hours.per.week.bin== "<40hrs")%>% filter(sex== "Female")%>% count()
@@ -360,9 +530,24 @@ ggplot(census, aes(age.e.bin, fill= hours.per.week.bin))+
 
 #Native Country
 ggplot(census, aes(x=native.country))+
-  geom_bar()
+  geom_bar(colour= 'black', fill= 'lightgreen')+
+  theme_minimal()+
+  labs(y= "Location",
+       title= 'Frequecy of Location')+
+  scale_y_continuous(breaks = c(1500,27572))
+
 ggplot(census, aes(x=native.country, fill= income.class))+
-  geom_bar(position = "fill")
+  geom_bar(position = "fill", colour= 'black')+
+  theme_minimal()+
+  scale_y_continuous(breaks = c(.321,.255,.076,0,1), sec.axis = sec_axis(~.,breaks = c(.083,.302,0,1)))+
+  labs(
+    x= 'location',
+    y='ratio',
+    title= 'Ratio of Native Country to Income'
+  )
+  
+  
+
 ggplot(census, aes(x=native.country, fill= sex))+
   geom_bar(position= "fill")
 ggplot(census, aes(x=native.country, fill= workclass))+
@@ -381,7 +566,7 @@ ggplot(census, aes(x=native.country, fill= workclass))+
 #that attempt.
 
 #removing added variables, and removing unused factor levels
-census.full<-census
+census.full<-census #copy for safe keeping
 rm(hrsperweek.out,age.out)
 census$age.e.bin<-NULL
 census$education.num<-NULL
@@ -391,7 +576,7 @@ census$capital.gain<-NULL
 census$capital.loss<-NULL
 census$hours.per.week<-NULL
 census$native.country
-census$workclass<-factor(census$workclass)
+census$workclass<-factor(census$workclass) #dropping '?'
 census$occupation<-factor(census$occupation)
 census$native.country<-factor(census$native.country)
 summary(census)
@@ -437,15 +622,73 @@ inc.mat<- matrix(c(18062,4492,5983,1508), nrow = 2)
 chisq.test(inc.mat)
 
 #education
-table(census.train$education)
-table(census.test$education)
-edu.mat<- matrix(c(3049,682,14956,3806,4040,979,1276,342,427,114,297,77), nrow = 2)
-chisq.test(edu.mat)
-
+train.edu<-table(census.train$education)
+test.edu<-table(census.test$education)
+edu.num<- rbind(test.edu,train.edu)
+edu.num
+edu.chi<-chisq.test(edu.num)
+edu.chi #Why is this split so off seems okay to me looking at the numbers? Am I running the Chi wrong?
+edu.chi$expected
+edu.num
 #normalize
 census.train$age<- minmax.nrom(census.train$age)
 census.test$age<- minmax.nrom(census.test$age)
 
+#------------Missing data imputation--------------#
+#Here we will look at potentially filling in the 2398 observations missing data points. lets look at the dispersion again
+md.pattern(census.copy.na[,c(2,7,14)])
+#In most observations if workclass is missing then occupation is missing as well So workclass should not be used as a
+#predictor for occupation as well. Though we can use multiple imputation models we will just look at decision trees for imputation
+
+#----C50-----#
+x<-census.train[,-c(2,14,5)]
+y<- census.train[,2]
+work.c50<- C5.0(x,y)
+summary(work.c50) #25 percent error We might as well pick private for all missing and achive 25% error
+work.c50.predict<- predict.C5.0(work.c50, newdata = census.test[,-c(2,14,5)], type= 'class')
+table(census.test$workclass, work.c50.predict)
+(40+4336+31)/6000 #abour 27% accuracy for work class
+
+x<-census.train[,-c(2,14,5)]
+y<-census.train[,5]
+occupation.c50<- C5.0(x,y)
+summary(occupation.c50) #51% error, not worth predicting the test set.
+
+x<-census.train[,-c(14,9)]
+y<-census.train[,9]
+native.c50<- C5.0(x,y)
+summary(native.c50) #overly selecting America in selection. Makes sense due to the frequency
+native.c50.predict<- predict.C5.0(native.c50, census.test[,-c(14,9)])
+table(census.test$native.country,native.c50.predict)
+(98+5451+20)/6000 #about 92% error, 
+(5505/6000) #91.75% error, means our model did 1% better than just picking North America
+#---CART---#
+x<-census.train[,-c(5,14)]
+work.rpart<- rpart(workclass~.,data = x, method='class')
+summary(work.rpart) #Rpart finds that the best way to determin the work class is just by selecting all as workclass
+
+x<-census.train[,-c(2,14)]
+occ.rpart<- rpart(occupation~.,data = x, method='class')
+summary(occ.rpart)
+rpart.plot(occ.rpart)
+occ.rpart.predict<- predict(occ.rpart, newdata = census.test[,-c(2,5,14)],type = 'class')
+table(occ.rpart.predict, census.test$occupation)
+(414+982+1006+215)/6000 #again poor prediction
+
+x<-census.train[,-14]
+nativ.rpart<- rpart(native.country~., data = x, method= 'class')
+summary(nativ.rpart)
+rpart.plot(nativ.rpart)#predicts country based on race
+native.rpart.predict<- predict(nativ.rpart, newdata = census.test[,-14], type= 'class')
+table(native.c50.predict,census.test$native.country)
+(98+5451+20)/6000 # again barly anygain over regular imputation
+
+#Based on these decision trees it is pretty well established that the best way to imput the missing data is by
+#selecting the Private for all missing workclass, omiting occupation as their is not good way to predict this with 
+#acceptable accuracy. Due to workclass and occupation being often missing in pairs it is probably best to omit these
+#results for accuacy and the fact that the sample size is already large enough. For Native country the best way
+#to deal with its missing data is by imputing North America for the missing data points and achive 90% accuracy, however
+#this will not be done as it will soon be proved that the native.country is not a very meaningfull predictor. 
 
 #----------------------------------#
 #-----Modeling Phase---------------#
@@ -470,7 +713,7 @@ anova(inc.glm, test = 'Chisq')
 inc.glm.predict<- predict(inc.glm,newdata = census.test.dummy, type = 'response' )
 inc.glm.predict <- ifelse(inc.glm.predict> 0.5,1,0)
 table(inc.glm.predict,census.test$income.class.ind)
-(334+634)/6000 #16% error
+(333+636)/6000 #16.15
 
 #Removing Race and Native Country due to non-significance
 census.train.1<- census.train
@@ -483,8 +726,8 @@ census.test.1$native.country<-NULL
 census.train.1$race<-NULL
 census.test.1$race<-NULL
 
-census.train.dummy.1[, c(19:22,24:28)]<-NULL
-census.test.dummy.1[,c(19:22,24:28)]<-NULL
+census.train.dummy.1[, c(19:22,24:27)]<-NULL
+census.test.dummy.1[,c(19:22,24:27)]<-NULL
 
 inc.1.glm<- glm(income.class.ind~.,data = census.train.dummy.1, family = 'binomial')
 summary(inc.1.glm)
@@ -509,7 +752,7 @@ anova(inc.2.glm, test = 'Chisq')
 inc.glm.predict.2<- predict(inc.2.glm,newdata = census.test.dummy.1, type = 'response' )
 inc.glm.predict.2 <- ifelse(inc.glm.predict.2> 0.5,1,0)
 table(inc.glm.predict.2,census.test$income.class.ind)
-(331+643)/6000 #16% missclass rate
+(331+643)/6000 #16.23% missclass rate
 #Though all these are pretty close but the best model is the one with race,native.country, and workclass removed
 #looking back at the EDA the graphs seem to back up the models assumptions. Also note that it does look like some of
 #these countries/ races do seem to have a higher percentage in the lower income but due to the balance these variables 
@@ -517,26 +760,26 @@ table(inc.glm.predict.2,census.test$income.class.ind)
 
 #----decision trees-------#
   #----C50------#
-x<- census.train[,c(1:9,11:13)]
-y<-census.train[,10]
+x<- census.train[,-c(13,9)]
+y<-census.train[,9]
 income.c50<- C5.0(x,y)
 summary(income.c50) #error of (15.1%)
-income.c50.predict<- predict.C5.0(income.c50, census.test[,c(1:9,11:13)])
+income.c50.predict<- predict.C5.0(income.c50, census.test[,-c(13,9)])
 table(income.c50.predict,census.test$income.class)
-(359+631)/6000   #error of  (16.5%) maybe a little overfitting going on but pretty even
+(360+626)/6000   #error of  (16.4%) maybe a little overfitting going on but pretty even
   #---C50--Without native,race, and workclass---#
-x<- census.train.1[,c(1:5,7:9)]
+x<- census.train.1[,-c(6,10)]
 y<-census.train.1[,6]
-income.c50<- C5.0(x,y)
-summary(income.c50) #error of (15.7%)
-income.c50.predict<- predict.C5.0(income.c50, census.test.1[,c(1:5,7:9)])
-table(income.c50.predict,census.test$income.class)
+income.c50.1<- C5.0(x,y)
+summary(income.c50.1) #error of (15.7%)
+income.c50.predict.1<- predict.C5.0(income.c50.1, census.test.1[,-c(6,10)])
+table(income.c50.predict.1,census.test$income.class)
 (388+600)/6000 #error of 16.4% 
 #As the results show the three variables removed had little to no effect on the efficieny of our model and 
 #actually improved the accuracy by .01% also it is important to strive for simplicity when possible
 
   #----CART----#
-x<-census.train[,-14]
+x<-census.train[,-13]
 income.rpart<- rpart(income.class~., data= x)
 summary(income.rpart)
 rpart.plot(income.rpart)
@@ -545,79 +788,37 @@ table(census.test$income.class, income.rpart.predict)
 (913+226)/6000 #18% error
   #note how CART does only uses relationship+ education thus no point in re-running without workclass, ect...
   #----KNN-----#
-x<-census.train.dummy[,-32]
-y<-census.test.dummy[,-32]
+x<-census.train.dummy[,-31]
+y<-census.test.dummy[,-31]
 income.knn.optimal<-c(rep(0,30))
 for(i in 1:30){
   income.knn.model<-knn(x,y, cl=census.train$income.class,k=i)
   income.knn.optimal[i]<-100*sum(census.test$income.class == income.knn.model)/6000
 }
-income.knn.optimal #about 82.55 accuracy at k=22, however what about tied??
+income.knn.optimal #about 82.55 accuracy at k=20 range, however what about ties?!?!
 #-----KNN-without work, race, native------#
-x<-census.train.dummy.1[,-21]
-y<-census.test.dummy.1[,-21]
+x<-census.train.dummy.1[,-20]
+y<-census.test.dummy.1[,-20]
 income.knn.optimal.1<-c(rep(0,30))
 for(i in 1:30){
   income.knn.model.1<-knn(x,y, cl=census.train$income.class,k=i)
   income.knn.optimal.1[i]<-100*sum(census.test$income.class == income.knn.model)/6000
 }
-max(income.knn.optimal.1) #literaly wores, I wonder if I could stretch the axisis
+max(income.knn.optimal.1) #barley a significant change.
 #---Neural Networks----#
-x<-census.train.dummy[,-32]
+set.seed(241) 
+x<-census.train.dummy[,-31]
 x$income.class<- census.train$income.class
 income.nnet<- nnet(income.class~., data = x, size= 10, maxit= 1000)
 income.nn.predict<- predict(income.nnet, census.test.dummy, type= 'class')
 table(income.nn.predict, census.test$income.class)
-(595+404)/6000 #16.65
+(373+601)/6000 #This will vary as it re-runs with different wieghts but it hovers around 16% error
 #---Neural Networks--without work, race, and native-------#
-x<-census.train.dummy.1[-21]
+x<-census.train.dummy.1[-20]
 x$income.class<- census.train$income.class
-income.nnet.1<- nnet(income.class~., data = x, size= 10, maxit= 1000, decay= .01)
+income.nnet.1<- nnet(income.class~., data = x, size= 10, maxit= 1000)
 income.nn.predict.1<- predict(income.nnet.1, census.test.dummy.1, type= 'class')
 table(income.nn.predict.1, census.test$income.class)
-#
-(359+600)/6000 #15.98
-#--------------------#
-#--base line models--#
-#--------------------#
+(329+697)/6000 #results in wieghts that are a bit higher. 
 
-#adding dummy variables
-census.b.indicator<-model.matrix(income.class~., data= census.b)
-census.b.indicator<- as.data.frame(census.b.indicator)
-#Lets go into predicting without editing anything
-set.seed(14632)
-samp<-sample(30139,6000)
-census.train.b<-census[-samp,]
-census.test.b<-census[samp,]
-census.train.b.ind<- census.b.indicator[-samp,]
-census.test.b.ind<- census.b.indicator[samp,]
-#Need to go back a make sure the test is representative of the sample
-  #decsison trees, C.50
-x<- census.train.b[,c(1:14)]
-y<- census.train.b[, 15]
-income.c50<- C5.0(x,y)
-summary(income.c50)
-income.c50.predict<- predict.C5.0(income.c50, census.test.b[,1:14])
-table(census.test.b$income.class, income.c50.predict)
-(2125+491)/3000 #87% 
-#CART
-census.train.b<-census.train.b[,-14]
-income.rpart<- rpart(income.class~., data= census.train.b)
-summary(income.rpart)
-rpart.plot(income.rpart)
-income.rpart.predict<- predict(income.rpart, census.test.b, type= 'class')
-table(census.test.b$income.class, income.rpart.predict)
-(901+240)/6000 #85%
-  #KNN
-x<- census.train.b.ind[,16:101]
-y<- census.test.b.ind[,16:101]
-z<- census.train.b[,15]
-income.knn<- knn(x,y,cl= z, k=15)
-table(census.test.b$income.class, income.knn)
-(2093+412)/3000 #about 86% accuracy
-  #Neural Network
-x$income.class<- census.train.b[,15]
-income.nn<- nnet(income.class~.,data= x, size=10, maxit= 500)
-income.nn.predict<- predict(income.nn, census.test.b.ind, type= 'class')
-table(income.nn.predict, census.test.b$income.class)
-(2079+462)/3000 #about 85% accuracy
+#Insert lift/ gain chart
