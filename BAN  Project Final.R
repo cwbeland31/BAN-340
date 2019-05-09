@@ -650,15 +650,6 @@ table(census.test$income.class)
 inc.mat<- matrix(c(18062,4492,5983,1508), nrow = 2)
 chisq.test(inc.mat)
 
-#education
-train.edu<-table(census.train$education)
-test.edu<-table(census.test$education)
-edu.num<- rbind(test.edu,train.edu)
-edu.num
-edu.chi<-chisq.test(edu.num)
-edu.chi #Why is this split so off seems okay to me looking at the numbers? Am I running the Chi wrong?
-edu.chi$expected
-edu.num
 #normalize
 census.train$age<- minmax.nrom(census.train$age)
 census.test$age<- minmax.nrom(census.test$age)
@@ -726,7 +717,7 @@ inc.glm<- glm(income.class.ind~.,data = census.train.dummy, family = 'binomial')
 summary(inc.glm)
 inc.glm.predict<- predict(inc.glm,newdata = census.test.dummy, type = 'response' )
 inc.glm.predict <- ifelse(inc.glm.predict> 0.5,1,0)
-table(inc.glm.predict,census.test$income.class.ind)
+table(census.test$income.class.ind,inc.glm.predict)
 #here we can get a good feel for the predicatbility of each variable. Specifically looking at marital status we
 #we cab see marital status has a strong effect along with relationship. However married and unmarried is already
 #established in relationship. Also Relationship's aditional variabls hold more signficance as apposed to married
@@ -739,13 +730,17 @@ census.test$marital.status<-NULL
 census.train.dummy[,c(9:11)]<-NULL
 census.test.dummy[,c(9:11)]<-NULL
 
+#-- glm model including workclass, race, and native country-----#
 inc.glm<- glm(income.class.ind~.,data = census.train.dummy, family = 'binomial')
 summary(inc.glm)
 anova(inc.glm, test = 'Chisq')
 inc.glm.predict<- predict(inc.glm,newdata = census.test.dummy, type = 'response' )
 inc.glm.predict <- ifelse(inc.glm.predict> 0.5,1,0)
-table(inc.glm.predict,census.test$income.class.ind)
-(333+636)/6000 #16.15%
+table(census.test$income.class.ind,inc.glm.predict)
+(333+636)/6000 # error rate 16.15%
+(333*2)+663 #1329 total error cost
+(872)/(872+636) # 57.82% sensitivity
+(4159)/(4159+333) # 92.59% specifictivity
 
 #Removing Race and Native Country due to non-significance
 census.train.1<- census.train
@@ -766,8 +761,10 @@ summary(inc.1.glm)
 anova(inc.1.glm, test = 'Chisq')
 inc.glm.predict.1<- predict(inc.1.glm,newdata = census.test.dummy.1, type = 'response' )
 inc.glm.predict.1 <- ifelse(inc.glm.predict.1> 0.5,1,0)
-table(inc.glm.predict.1,census.test$income.class.ind)
-(332+645)/6000 #We can see that these variables had very little effect in the predictability
+table(census.test$income.class.ind,inc.glm.predict.1)
+(332+645)/6000 #error rate of 16.28%
+
+#We can see that these variables had very little effect in the predictability
 #Now lets look at Workclass which seems to have very low predictive power based off of the
 #logistics model and will be removed and tested to see reduction in accuracy
 
@@ -783,33 +780,85 @@ summary(inc.2.glm)
 anova(inc.2.glm, test = 'Chisq')
 inc.glm.predict.2<- predict(inc.2.glm,newdata = census.test.dummy.1, type = 'response' )
 inc.glm.predict.2 <- ifelse(inc.glm.predict.2> 0.5,1,0)
-table(inc.glm.predict.2,census.test$income.class.ind)
-(331+643)/6000 #16.23% missclass rate
+table(census.test$income.class.ind,inc.glm.predict.2)
+(331+643)/6000 #16.23% missclass rate with .5 cut off value
+((331*2)+643) #total cost of error 1305
+(865/(643+865)) #57.46% sensetivity
+(4161)/(331+4161) #92% specificty
+inc.glm.predict.2<- predict(inc.2.glm,newdata = census.test.dummy.1, type = 'response' )
+inc.glm.predict.2 <- ifelse(inc.glm.predict.2> 0.55,1,0)
+table(census.test$income.class.ind,inc.glm.predict.2)
+(265+716)/6000 #16.35% error rate
+(265*2)+716 #total error cost of 1246
+(792/(792+716)) # sensativity of 52.51%
+(4227/(265+4227)) #specifity of 94.1%
+inc.glm.predict.2<- predict(inc.2.glm,newdata = census.test.dummy.1, type = 'response' )
+inc.glm.predict.2 <- ifelse(inc.glm.predict.2> 0.6,1,0)
+table(census.test$income.class.ind,inc.glm.predict.2)
+(217+791)/6000 #overall error
+((217*2)+791) #total cost of error 1225
+(717/(791+717)) # 47.54% sensitivity
+(4275/(4255+217)) #95.59% specificty
+inc.glm.predict.2<- predict(inc.2.glm,newdata = census.test.dummy.1, type = 'response' )
+inc.glm.predict.2 <- ifelse(inc.glm.predict.2> 0.65,1,0)
+table(census.test$income.class.ind,inc.glm.predict.2)
+(178+875)/6000 # 17% error rate
+(178*2)+875 #total cost of error 1231 
+(663/(663+875)) #43.11% sensitivity
+(4314/(178+4314)) #96% specificty
+inc.glm.predict.2<- predict(inc.2.glm,newdata = census.test.dummy.1, type = 'response' )
+inc.glm.predict.2 <- ifelse(inc.glm.predict.2> 0.7,1,0)
+table(census.test$income.class.ind,inc.glm.predict.2)
+(139+961)/6000 #overall error rate of 12.39%
+((139*2+961)) #total cost of error 1239
+(547/(961+547)) #36.27% sensitivity
+(4353/(4353+139)) #97% specificty
+
 #Though all these are pretty close but the best model is the one with race,native.country, and workclass removed
 #looking back at the EDA the graphs seem to back up the models assumptions. Also note that it does look like some of
 #these countries/ races do seem to have a higher percentage in the lower income but due to the balance these variables 
 #do not seem to affect prediction. However we will put them back into some of the modeles and compare
 
 #----decision trees-------#
-  #----C50------#
+
+  #----C50---With work class, native race, and race--#
 x<- census.train[,-c(13,9)]
 y<-census.train[,9]
 income.c50<- C5.0(x,y)
 summary(income.c50) #error of (15.1%)
 income.c50.predict<- predict.C5.0(income.c50, census.test[,-c(13,9)])
-table(income.c50.predict,census.test$income.class)
+table(census.test$income.class,income.c50.predict)
 (360+626)/6000   #error of  (16.4%) maybe a little overfitting going on but pretty even
-  #---C50--Without native,race, and workclass---#
+(360*2)+626   #total cost of error: 1346 
+882/((882+626)) # of 58% sensitivity
+4132/(4132+360) # 92% specifictivity
+
+#---C50--Without native,race, and workclass---#
 x<- census.train.1[,-c(6,10)]
 y<-census.train.1[,6]
 income.c50.1<- C5.0(x,y)
 summary(income.c50.1) #error of (15.7%)
 income.c50.predict.1<- predict.C5.0(income.c50.1, census.test.1[,-c(6,10)])
-table(income.c50.predict.1,census.test$income.class)
+table(census.test$income.class,income.c50.predict.1)
 (388+600)/6000 #error of 16.4% 
+(388*2)+600 #1376 is the total cost of errors 
+(908)/(908+600) #sensativity of 60%
+(4104/(388+4104)) #91% specifictivity
 #As the results show the three variables removed had little to no effect on the efficieny of our model and 
 #actually improved the accuracy by .01% also it is important to strive for simplicity when possible
 
+#----C50-- with assigned error values----#
+costm<- matrix(c(1,2,1,1),nrow = 2)
+x<- census.train.1[,-c(6,10)]
+y<-census.train.1[,6]
+income.c50.2<- C5.0(x,y, costs = costm)
+summary(income.c50.2)
+income.c50.predict.2<- predict.C5.0(income.c50.2, census.test.1[,-c(6,10)])
+table(census.test$income.class, income.c50.predict.2)
+(130+957)/6000 #18.12 error rate
+(130*2)+957 #total cost of  error:1217
+(551)/(957+551) #sensativity of 36.54%
+(4362)/(4362+130) #specificty of 97.11%
   #----CART----#
 x<-census.train[,-13]
 income.rpart<- rpart(income.class~., data= x)
@@ -817,9 +866,13 @@ summary(income.rpart)
 rpart.plot(income.rpart)
 income.rpart.predict<- predict(income.rpart, census.test, type= 'class')
 table(census.test$income.class, income.rpart.predict)
-(913+226)/6000 #18% error
+(913+226)/6000 #18.98% error
+(216*2)+913 #1345 total cost of error
+(595/(595+913)) #39.46% sensitivity
+(4266)/(4266+226) #specicfity of 94.97%
   #note how CART does only uses relationship+ education thus no point in re-running without workclass, ect...
-  #----KNN-----#
+ 
+#----KNN--with workclass, native country, and race---#
 x<-census.train.dummy[,-31]
 y<-census.test.dummy[,-31]
 income.knn.optimal<-c(rep(0,30))
@@ -827,7 +880,17 @@ for(i in 1:30){
   income.knn.model<-knn(x,y, cl=census.train$income.class,k=i)
   income.knn.optimal[i]<-100*sum(census.test$income.class == income.knn.model)/6000
 }
-income.knn.optimal #about 82.55 accuracy at k=20 range, however what about ties?!?!
+income.knn.optimal #about 82.5% accuracy at k=15 range, however what about ties are random
+
+x<-census.train.dummy[,-31]
+y<-census.test.dummy[,-31]
+knn.15<- knn(x,y, cl=census.train$income.class,k=15)
+table(knn.15,census.test$income.class)
+(452+638)/6000 #error rate of 18.1%
+(638*2+452) #total cost of errors: 1728
+870/(452+870) #sensitivity 65.81%
+4040/(4040+638)#specifictivity of 86.36%
+
 #-----KNN-without work, race, native------#
 x<-census.train.dummy.1[,-21]
 y<-census.test.dummy.1[,-21]
@@ -837,14 +900,22 @@ for(i in 1:30){
   income.knn.optimal.1[i]<-100*sum(census.test$income.class == income.knn.model.1)/6000
 }
 income.knn.optimal.1 #a small positive change
-#---Neural Networks----#
+x<-census.train.dummy.1[,-21]
+y<-census.test.dummy.1[,-21]
+knn.15.1<- knn(x,y, cl=census.train$income.class,k=15)
+table(knn.15.1,census.test$income.class)
+
+#---Neural Networks--with race, workclass, and native country--#
 set.seed(241) 
 x<-census.train.dummy[,-31]
 x$income.class<- census.train$income.class
 income.nnet<- nnet(income.class~., data = x, size= 10, maxit= 1000)
 income.nn.predict<- predict(income.nnet, census.test.dummy, type= 'class')
-table(income.nn.predict, census.test$income.class)
-(373+601)/6000 #This will vary as it re-runs with different wieghts but it hovers around 16% error
+table(census.test$income.class,income.nn.predict)
+(373+601)/6000 #error rate
+373*2+601 #1347 unit cost
+907/(907+601) # 60% sensitvity
+4084/(602+4084) # 87.15% specifictivity
 
 #---Neural Networks--without work, race, and native-------#
 set.seed(231)
@@ -852,6 +923,8 @@ x<-census.train.dummy.1[,-21]
 x$income.class<- census.train$income.class
 income.nnet.1<- nnet(income.class~., data = x, size= 10, maxit= 1000)
 income.nn.predict.1<- predict(income.nnet.1, census.test.dummy.1, type= 'class')
-table(income.nn.predict.1, census.test$income.class)
-(357+619)/6000 #results in wieghts that are a bit higher. 
-
+table(census.test$income.class,income.nn.predict.1)
+(357+619)/6000 #results 16.26% accuracy
+357*2+619 #1333 unit cost
+889/(619+889)# 58.95% sensitivity
+4135/(4135+357) # 92.05 specifictivity
